@@ -1,12 +1,20 @@
-FROM node:13-alpine
-RUN apk add python3 make g++
-ENV NODE_ENV=production
-ENV PORT=8080
+FROM nginx:1.19.0
+ARG PORT=8080
+EXPOSE $PORT
+
+RUN apt-get update
+RUN apt-get install -y curl
+RUN curl -fsSL https://deb.nodesource.com/setup_21.x | bash -
+RUN apt-get install -y nodejs
+RUN npm install -g yarn
 RUN mkdir /app
-RUN chown node:node /app
 WORKDIR /app
-USER node
-COPY --chown=node:node ["./", "./"]
-RUN NODE_ENV="" npm ci || npm install --include=dev --production=false
-RUN npm run build
-CMD ["npm", "run", "start"]
+
+COPY . .
+RUN yarn --immutable
+
+COPY ./nginx/nginx.conf /etc/nginx/conf.d/default.conf
+RUN chmod +x /app/scripts/entrypoint.sh
+
+ENV NODE_ENV production
+ENTRYPOINT [ "/app/scripts/entrypoint.sh" ]
